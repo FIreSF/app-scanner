@@ -8,6 +8,101 @@ The repository is the **constitution + tooling** layer: markdown doctrine that c
 
 ---
 
+## How to Use the Agent — What It Can Do
+
+### What the agent can do
+
+App Scanner is an **automated mobile security testing assistant** for Android/iOS apps. Given an
+authorized target app, it can:
+
+- **Analyze the app statically** — decompile with jadx/apktool, read the manifest, find exported
+  components, libraries, hardcoded keys, insecure crypto, and native code risks.
+- **Test it dynamically** — run Frida hook scripts (`templates/frida/*.js`) to bypass SSL pinning
+  and root detection, log crypto/storage/WebView calls, and watch intents/deep links at runtime.
+- **Intercept traffic** — decrypt TLS with mitmproxy, map APIs, and find tokens/PII leaking in transit.
+- **Check storage & crypto** — inspect SharedPreferences, SQLite databases, Android Keystore,
+  clipboard, backups, weak algorithms, static IVs, and hardcoded keys.
+- **Attack IPC & WebView** — test exported activities/services/receivers, intent redirection,
+  deep links, content providers, JS bridges, `file://` abuse, and universal XSS.
+- **Check resilience** — test root/jailbreak detection, anti-debug, anti-Frida, and obfuscation (MASVS-R).
+- **Look up known bugs** — the intel agent matches findings against CVE/bug intel — without touching
+  the device or target network.
+- **Prove findings are real** — every finding must pass the **7-question Hard FP Gate** and an
+  independent adversarial verification before it can be reported. Fake/weak findings are rejected
+  automatically.
+- **Track MASVS coverage** — maps everything tested against the 23 OWASP MASVS v2.0 controls and
+  lists what is still untested.
+- **Learn from writeups** — processed writeups feed `memory/` and `skills/` so future runs reuse
+  proven techniques and avoid known false positives.
+- **Generate a final report** — an OWASP-structured report (see `templates/report/owasp-masvs-report.md`):
+  introduction, executive summary, findings with likelihood/impact/risk/remediation, MASVS coverage,
+  and appendices. Reports are only written with explicit user approval (`--approve`).
+
+### The agents (who does what)
+
+| Agent | What it does |
+|---|---|
+| **orchestrator-agent** | The boss. Takes the target, locks the scope, plans the work in waves, and controls the final reporting gate. |
+| static-agent | Decompilation, manifest, libraries, native binaries |
+| mcp-bug-intel-agent | CVE / vulnerability intel lookup (no device, no network to target) |
+| dynamic-agent | Runtime exploration, tracing, class dump |
+| frida-script-agent | Generates targeted Frida scripts from static + CVE findings |
+| network-traffic-agent | TLS decryption, API mapping, token/PII exposure |
+| crypto-analysis-agent | Weak crypto, hardcoded keys, key management |
+| storage-analysis-agent | SharedPrefs, databases, Keystore, backups, clipboard |
+| ipc-attack-agent | Exported components, intents, deep links, content providers |
+| webview-agent | JS bridges, `file://` abuse, universal XSS |
+| resilience-agent | Root/jailbreak, anti-debug, anti-Frida, obfuscation (MASVS-R) |
+| root-device-agent / emulator-agent | Prepares a rooted device or emulator (frida-server, CA certs) |
+| exploitation-agent | Turns high-confidence leads into reproducible PoCs |
+| verification-agent | Independent falsifier — tries to prove each finding WRONG |
+| compliance-agent | MASVS/MASTG coverage matrix and gap list |
+| reporting-agent | Builds the final report from validated findings only (user gated) |
+
+Max 3 sub-agents run at the same time. Sub-agents never make final risk decisions — only the
+orchestrator can promote a finding to REPORTABLE.
+
+### How to use it (end-to-end)
+
+**Requirements:** Python 3.9+, plus the mobile tools you need for your scope:
+`adb`, `frida` + `frida-tools`, `jadx`, `apktool`, `mitmproxy` — check with `doctor` below.
+
+```bash
+# 1. Make sure the repo is healthy and tools are installed
+python scripts/orchestrator_runner.py doctor
+python scripts/orchestrator_runner.py validate-registry
+
+# 2. Create a scope-locked workspace for ONE authorized target app
+python scripts/orchestrator_runner.py bootstrap --target "com.example.targetapp"
+
+# 3. See the agent plan (which agents run, in which waves)
+python scripts/orchestrator_runner.py plan
+python scripts/orchestrator_runner.py waves
+
+# 4. Run the work (following AGENTS.md rules of engagement):
+#    static → intel → frida/dynamic → traffic/crypto/storage/ipc/webview/resilience
+#    → exploitation → verification → compliance
+#    Findings are written as JSON into testing/<package>/findings/
+
+# 5. Gate each finding (must pass all 7 FP questions + user approval to reach REPORTABLE)
+python scripts/orchestrator_runner.py gate --file testing/com.example.targetapp/findings/FIND-0001.json
+
+# 6. Check MASVS coverage and untested gaps
+python scripts/orchestrator_runner.py coverage --target "com.example.targetapp"
+
+# 7. Generate the final OWASP-structured report (dry run by default)
+python scripts/orchestrator_runner.py report --target "com.example.targetapp"
+python scripts/orchestrator_runner.py report --target "com.example.targetapp" --approve
+# → testing/com.example.targetapp/reports/final-report.md
+```
+
+> **Golden rules (from `AGENTS.md`):** test only apps/accounts you own or are authorized to test;
+> never exfiltrate real user data; keep evidence (artifact SHA-256, baseline vs manipulated payload,
+> device info, exact commands) for every finding. Full details: `AGENTS.md`, `memory/methodology.md`,
+> and the step-by-step commands in §1 below.
+
+---
+
 ## 1. Quick Start
 
 All commands are run from the repository root. Python 3.9+ is required; the
