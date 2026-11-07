@@ -39,7 +39,7 @@ SCENARIO_MAPPINGS: Dict[str, Dict[str, Any]] = {
     },
     "frida": {
         "agents": ["frida-script-agent", "dynamic-agent"],
-        "skills": ["skills/master-bugbounty-rules.md"],
+        "skills": ["skills/master-bugbounty-rules.md", "skills/frida-lab-and-runtime.md"],
         "tools": ["frida", "frida-tools", "objection", "python"],
         "description": "Generate targeted, read-only-by-default instrumentation scripts.",
         "masvs_category": "MASVS-RESILIENCE",
