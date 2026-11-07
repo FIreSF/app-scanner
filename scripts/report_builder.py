@@ -212,9 +212,21 @@ def _evidence_list(finding: Dict[str, Any]) -> str:
 
 
 def render_report(data: Dict[str, Any]) -> str:
+    """Render the final report following the OWASP WSTG reporting structure,
+    adapted for mobile assessments with an OWASP MASVS coverage section.
+
+    Structure (OWASP WSTG document/5-Reporting, adapted):
+      1. Introduction (version control, scope, limitations, timeline, disclaimer)
+      2. Executive summary
+      3. Findings (3.1 summary table, 3.2 details per finding incl. likelihood,
+         impact, risk, description, remediation, artifacts)
+      4. MASVS v2.0 coverage
+      Appendices + References
+    """
     artifact = data.get("artifact") or {}
     totals = data["totals"]
     coverage = data.get("coverage") or {}
+    generated = data["generated_at"]
     lines: List[str] = [
         "# Mobile Application Security Assessment",
         "",
@@ -224,10 +236,42 @@ def render_report(data: Dict[str, Any]) -> str:
         f"- **Artifact SHA-256:** `{artifact.get('artifact_sha256') or 'not provided'}`",
         f"- **Session:** `{artifact.get('session_id') or 'not started'}`",
         f"- **Scope lock:** {artifact.get('scope_lock') or 'UNRECORDED'}",
-        f"- **Generated:** {data['generated_at']}",
+        f"- **Generated:** {generated}",
         f"- **User gate:** {'APPROVED' if data['approved'] else 'NOT APPROVED (dry run)'}",
         "",
-        "## Executive summary",
+        "## 1. Introduction",
+        "",
+        "### 1.1 Version Control",
+        "",
+        "| Version | Description | Date | Author |",
+        "|:-------:|-------------|------|--------|",
+        f"| 1.0 | Initial report (App Scanner `report_builder`) | {generated} | reporting-agent |",
+        "",
+        "### 1.2 Scope",
+        "",
+        "Authorized mobile application penetration testing of the target named above, on owned or "
+        "explicitly authorized devices/emulators, using owned test accounts only. Testing is limited to "
+        "the applications and accounts recorded in the scope lock.",
+        "",
+        "### 1.3 Limitations",
+        "",
+        "- Point-in-time assessment: the application and backend may change after testing.",
+        "- Out-of-scope areas, broken functionality, lack of credentials, and device tooling gaps "
+        "may limit coverage (see MASVS gaps below).",
+        "- Findings are reported only when evidence, reproduction, and independent verification support them.",
+        "",
+        "### 1.4 Timeline",
+        "",
+        f"- Session: `{artifact.get('session_id') or 'not started'}`",
+        f"- Report generated: {generated}",
+        "",
+        "### 1.5 Disclaimer",
+        "",
+        "*This test is a point-in-time assessment; the environment may have changed since testing. "
+        "There is no guarantee every possible issue was identified. This report is a guiding document, "
+        "not a warranty that it fully represents the risks to the system.*",
+        "",
+        "## 2. Executive Summary",
         "",
         f"{totals['included']} validated finding(s) are included; "
         f"{totals['excluded']} finding file(s) were excluded by the reporting gate.",
@@ -245,7 +289,50 @@ def render_report(data: Dict[str, Any]) -> str:
             "lifecycle state higher than their evidence supports. They are excluded.",
         ]
 
-    lines += ["", "## MASVS v2.0 coverage", ""]
+    lines += [
+        "",
+        "## 3. Findings",
+        "",
+        "### 3.1 Findings Summary",
+        "",
+        "| Ref. ID | Title | Risk Level |",
+        "|:------------:|--------|------------|",
+    ]
+    for index, row in enumerate(data["included"], start=1):
+        lines.append(f"| {index} | {_table(row['title'])} | {row['severity']} |")
+
+    lines += ["", "### 3.2 Findings Details", ""]
+    if not data["included"]:
+        lines.append("_No finding passed the reporting gate._")
+    for index, row in enumerate(data["included"], start=1):
+        finding = row["finding"]
+        likelihood = (
+            finding.get("likelihood")
+            or finding.get("exploitability")
+            or f"Reproduced {finding.get('reproduced_count', 'not recorded')} time(s); "
+            f"chain/leverage: {finding.get('chain') or finding.get('leverage') or 'not recorded'}"
+        )
+        lines += [
+            f"#### {index}. {row['title']}",
+            "",
+            f"- **Reference ID:** {index}",
+            f"- **Finding ID:** `{row['finding_id']}`",
+            f"- **Risk Level:** {row['severity']}",
+            f"- **State:** {row['state']} (evidence-supported: {row['effective_state']})",
+            f"- **Category (MASVS):** {row['category']}",
+            f"- **Likelihood / Exploitability:** {likelihood}",
+            f"- **Impact:** {finding.get('impact') or 'not recorded'}",
+            f"- **Description:** {finding.get('description') or row['title']}",
+            f"- **Remediation:** {finding.get('remediation') or 'not recorded — apply MASVS control guidance for this category and re-verify with verification-agent.'}",
+            f"- **Signature:** `{row['signature_hash']}`",
+            f"- **Reproductions:** {finding.get('reproduced_count', 'not recorded')}",
+            f"- **Verification verdict:** {finding.get('verification_verdict') or 'not recorded'}",
+            f"- **Evidence / Artifacts:** {_evidence_list(finding)}",
+            f"- **Finding file:** `{row['path']}`",
+            "",
+        ]
+
+    lines += ["## 4. MASVS v2.0 coverage", ""]
     if coverage.get("error"):
         lines.append(f"Coverage unavailable: {coverage['error']}")
     elif coverage:
@@ -268,30 +355,9 @@ def render_report(data: Dict[str, Any]) -> str:
     else:
         lines.append("_No coverage matrix could be derived from the workspace._")
 
-    lines += ["", "## Validated findings", ""]
-    if not data["included"]:
-        lines.append("_No finding passed the reporting gate._")
-    for index, row in enumerate(data["included"], start=1):
-        finding = row["finding"]
-        lines += [
-            f"### {index}. {row['title']}",
-            "",
-            f"- **Severity:** {row['severity']}",
-            f"- **State:** {row['state']} (evidence-supported: {row['effective_state']})",
-            f"- **Category:** {row['category']}",
-            f"- **Finding ID:** `{row['finding_id']}`",
-            f"- **Signature:** `{row['signature_hash']}`",
-            f"- **Impact:** {finding.get('impact') or 'not recorded'}",
-            f"- **Leverage / chain:** {finding.get('chain') or finding.get('leverage') or 'not recorded'}",
-            f"- **Reproductions:** {finding.get('reproduced_count', 'not recorded')}",
-            f"- **Verification verdict:** {finding.get('verification_verdict') or 'not recorded'}",
-            f"- **Evidence:** {_evidence_list(finding)}",
-            f"- **Finding file:** `{row['path']}`",
-            "",
-        ]
-
     if data["excluded"]:
         lines += [
+            "",
             "## Excluded by the reporting gate",
             "",
             "| Finding | Declared state | Evidence state | Reason |",
@@ -305,7 +371,23 @@ def render_report(data: Dict[str, Any]) -> str:
         lines.append("")
 
     lines += [
-        "## Evidence handling",
+        "## Appendix A. Methodology",
+        "",
+        "Testing follows the OWASP MASVS / MASTG methodology (see `memory/methodology.md`). "
+        "Findings are promoted only through the lifecycle state machine and the 7-question Hard FP Gate, "
+        "with independent verification by `verification-agent`.",
+        "",
+        "## Appendix B. Severity scale",
+        "",
+        "| Severity | Meaning |",
+        "|---|---|",
+        "| Critical | Direct compromise / data breach likely |",
+        "| High | Significant impact, practical exploitation |",
+        "| Medium | Limited impact or harder exploitation |",
+        "| Low | Minor impact, defense-in-depth issue |",
+        "| Informational | Hardening / best-practice note |",
+        "",
+        "## Appendix C. Evidence handling",
         "",
         "- Raw evidence remains under the engagement workspace; this report references it.",
         "- Redact cookies, tokens and PII before sharing the report outside the engagement.",
@@ -316,9 +398,15 @@ def render_report(data: Dict[str, Any]) -> str:
         "This document was generated only from findings whose lifecycle state and Hard FP Gate "
         "evidence agree. The user gate is explicit: without `--approve` this file is a preview.",
         "",
+        "## References",
+        "",
+        "- OWASP WSTG — Reporting Structure: https://github.com/OWASP/wstg/blob/master/document/5-Reporting/01-Reporting_Structure.md",
+        "- OWASP MASVS: https://github.com/OWASP/masvs",
+        "- OWASP MASTG: https://github.com/OWASP/mastg",
+        "- OWASP Cheat Sheet Series: https://cheatsheetseries.owasp.org",
+        "",
     ]
     return "\n".join(lines)
-
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Assemble the gated final report")
