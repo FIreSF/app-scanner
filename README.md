@@ -315,8 +315,16 @@ The roster itself lives in `runtime/registry.json` and is validated by
   - `patterns.md`: Mobile attack patterns and exploit primitives.
   - `methodology.md`: OWASP MASVS / MASTG coverage map.
   - `targets/*.md`: Per-vulnerability category checklists.
-- `skills/`:
+- `skills/`: 29 methodology skills resolved by `skill_registry.py` (scenario -> skill), including:
   - `master-bugbounty-rules.md`: Master rules of engagement.
+  - `frida-lab-and-runtime.md`: Frida lab setup & runtime bypass playbook (from Medium writeups).
+  - `crypto-keymanagement-audit.md`, `android-insecure-randomness.md`, `android-keystore-extraction.md`, `android-biometric-auth-bypass.md`: crypto/auth.
+  - `storage-data-at-rest.md`, `android-backup-extraction.md`, `android-sqlite-and-database.md`, `android-clipboard-and-intent-leakage.md`, `ios-keychain-and-storage.md`, `android-screen-and-multitasking-leakage.md`: storage.
+  - `ipc-deeplink-exploitation.md`, `android-exported-components.md`, `android-content-provider-traversal.md`, `android-intent-redirection-pendingintent.md`, `ios-url-scheme-pasteboard.md`: IPC/platform.
+  - `network-api-security.md`, `android-network-security-config.md`, `ios-ats-and-transport.md`, `mobile-api-backend-testing.md`: network/API.
+  - `webview-security-testing.md`, `android-webview-file-access.md`: WebView.
+  - `resilience-antitamper.md`, `android-debuggable-and-logging.md`, `ios-jailbreak-and-debug.md`, `android-obfuscation-and-packing.md`: resilience.
+  - `flutter-android-security.md`, `adversarial-falsification.md`: Flutter + FP falsification.
 - `.agents/skills/learning-engine-integration/SKILL.md`: Learning engine integration standard.
 - `templates/frida/`:
   - `ssl_pinning_bypass.js`: Universal Android SSL Pinning bypass.
