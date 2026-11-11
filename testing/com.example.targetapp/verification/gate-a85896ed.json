@@ -1,0 +1,39 @@
+{
+  "finding_title": "Exported DeepLinkActivity forwards arbitrary extras and deep-link data to Flutter initial route (route injection)",
+  "signature_hash": "a85896ed",
+  "checks": {
+    "1_real_impact": true,
+    "2_exploitable": true,
+    "3_leverageable": true,
+    "4_raw_poc_reproducible": true,
+    "5_cross_context": true,
+    "6_fp_db_cleared": true,
+    "7_verification_agent_verdict": true
+  },
+  "check_labels": {
+    "1_real_impact": "Real impact (specific unauthorized data access, privilege escalation or state tampering)",
+    "2_exploitable": "Exploitable (deterministic PoC path/command present)",
+    "3_leverageable": "Leverageable (chains into ATO / RCE / cross-tenant / admin bypass)",
+    "4_raw_poc_reproducible": "Raw PoC reproduced at least twice on clean state",
+    "5_cross_context": "Cross-context verified (>= 2 accounts/roles/tenants)",
+    "6_fp_db_cleared": "Signature hash absent from memory/FALSE_POSITIVE_DB.md",
+    "7_verification_agent_verdict": "verification-agent verdict is CONFIRMED_VALIDATED"
+  },
+  "details": {
+    "1_real_impact": "severity=Medium, impact=set",
+    "2_exploitable": "PoC file found: /home/fire/Depi-project/Depi-project-main/Mobile-Agent/testing/br.com.xp.carteira/ipc/deeplink-notes.md",
+    "3_leverageable": "chain=Third-party app Intent \u2192 DeepLinkActivity.read() putExtras \u2192 MainActivity \u2192 FlutterFragmentActivity.getInitialRoute() route extra \u2192 Dart router (guard unknown, pending account test). If Dart honors valid routes or webview?url= without whitelist, chain = auth-flow deception / phishing navigation / WebView session exposure., severity=Medium (Medium/Low requires an explicit chain to REPORTABLE-level impact)",
+    "4_raw_poc_reproducible": "reproduced_count=3 (need >= 2)",
+    "5_cross_context": "cross_context_verified=True, contexts=3",
+    "6_fp_db_cleared": "no matching signature in FP database",
+    "7_verification_agent_verdict": "verdict=CONFIRMED_VALIDATED"
+  },
+  "blocking_checks": [],
+  "in_fp_db": false,
+  "fp_entry": null,
+  "verdict": "APPROVED",
+  "reporting_gate_open": false,
+  "highest_supported_state": "VALIDATED",
+  "final_state": "VALIDATED",
+  "confidence": "85-95%"
+}

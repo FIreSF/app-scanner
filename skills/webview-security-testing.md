@@ -1,3 +1,8 @@
+---
+name: Webview Security Testing
+description: Use when testing Android WebView and hybrid bridge security: JavaScript interfaces, native bridges, universal XSS.
+---
+
 # WEBVIEW & HYBRID BRIDGE SECURITY TESTING (skills/webview-security-testing.md)
 **Standard:** OWASP MASVS-PLATFORM | Android WebView & iOS WKWebView  
 **Audience:** Senior Mobile Penetration Testers & WebView Agents  

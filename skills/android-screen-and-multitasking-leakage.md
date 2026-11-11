@@ -1,3 +1,8 @@
+---
+name: Android Screen And Multitasking Leakage
+description: Use when testing screenshot, recents, and notification leakage of sensitive screens.
+---
+
 # Screen, recents & notification leakage (android-screen-and-multitasking-leakage.md)
 **Standard:** OWASP MASVS-STORAGE / MASVS-RESILIENCE
 **Audience:** Mobile penetration testers & android agents

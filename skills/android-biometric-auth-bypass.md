@@ -1,3 +1,8 @@
+---
+name: Android Biometric Auth Bypass
+description: Use when testing Android biometric and app-lock implementations: BiometricPrompt misuse, weak crypto-bound keys, local auth bypass.
+---
+
 # Biometric & app-lock bypass (android-biometric-auth-bypass.md)
 **Standard:** OWASP MASVS-AUTH
 **Audience:** Mobile penetration testers & android agents

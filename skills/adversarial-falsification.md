@@ -1,3 +1,8 @@
+---
+name: Adversarial Falsification
+description: Use when challenging a finding before it is reported: falsification questions, alternative explanations, and false-positive elimination for mobile pentest results.
+---
+
 # ADVERSARIAL FALSIFICATION & FALSE-POSITIVE ELIMINATION (skills/adversarial-falsification.md)
 **Standard:** Bug Bounty Quality Assurance | The 7-Question Hard FP Gate  
 **Audience:** Senior Mobile Penetration Testers & Verification Agents  

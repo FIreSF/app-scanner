@@ -1,3 +1,8 @@
+---
+name: Resilience Antitamper
+description: Use when testing MASVS-R resilience: root and jailbreak detection, anti-debug, anti-Frida, and tamper checks.
+---
+
 # RESILIENCE, ANTI-TAMPERING & REVERSE ENGINEERING AUDITING (skills/resilience-antitamper.md)
 **Standard:** OWASP MASVS-RESILIENCE | Android & iOS Anti-Analysis  
 **Audience:** Senior Mobile Penetration Testers & Resilience Agents  

@@ -1,3 +1,8 @@
+---
+name: Android Backup Extraction
+description: Use when testing Android backup exposure (allowBackup, adb backup, full app-data extraction) on a target APK.
+---
+
 # Android backup extraction (allowBackup) (android-backup-extraction.md)
 **Standard:** OWASP MASVS-STORAGE-2
 **Audience:** Mobile penetration testers & android agents

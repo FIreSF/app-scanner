@@ -1,3 +1,8 @@
+---
+name: Network API Security
+description: Use when auditing mobile network traffic: TLS, certificate pinning, API endpoint mapping, token and PII exposure in transit.
+---
+
 # NETWORK TRAFFIC & MOBILE API SECURITY AUDITING (skills/network-api-security.md)
 **Standard:** OWASP MASVS-NETWORK & MASVS-AUTH | API Security Testing  
 **Audience:** Senior Mobile Penetration Testers & Network Traffic Agents  

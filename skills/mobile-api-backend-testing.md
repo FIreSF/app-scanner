@@ -1,3 +1,8 @@
+---
+name: Mobile API Backend Testing
+description: Use when proving server-side impact of a mobile client finding: API abuse, IDOR, cross-tenant access, privilege bypass.
+---
+
 # Mobile API / backend testing (client findings, server impact) (mobile-api-backend-testing.md)
 **Standard:** OWASP MASVS-NETWORK / MASVS-AUTH
 **Audience:** Mobile penetration testers & mobile agents

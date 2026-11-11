@@ -1,3 +1,8 @@
+---
+name: Android Intent Redirection Pendingintent
+description: Use when testing intent redirection, PendingIntent mutability, and pending-intent hijacking to reach internal components.
+---
+
 # Intent redirection & PendingIntent mutability (android-intent-redirection-pendingintent.md)
 **Standard:** OWASP MASVS-PLATFORM
 **Audience:** Mobile penetration testers & android agents

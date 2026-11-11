@@ -107,10 +107,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if not rows:
             print("(no findings)")
             return 0
-        print(f"{'FINDING ID':<14}{'SEVERITY':<12}{'STATE':<16}{'SIG':<10}TITLE")
+        print(
+            f"{'TARGET':<28}{'FINDING ID':<14}{'SEVERITY':<12}{'STATE':<16}"
+            f"{'SIG':<10}TITLE"
+        )
         for row in rows:
+            stored_id = row["finding_id"]
+            # Ids are unique per target: "<target>#<finding_id>" when another
+            # engagement already owns the plain id.
+            short_id = stored_id.split("#", 1)[1] if "#" in stored_id else stored_id
             print(
-                f"{row['finding_id']:<14}{row['severity']:<12}{row['state']:<16}"
+                f"{row.get('target_package') or '-':<28}{short_id:<14}"
+                f"{row['severity']:<12}{row['state']:<16}"
                 f"{row['signature_hash']:<10}{row['title']}"
             )
         return 0

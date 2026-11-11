@@ -174,7 +174,118 @@ class Orchestrator:
                 "masvs_category": finding.get("masvs_category") or finding.get("category") or "MASVS-CODE",
             }
         )
+        # Workspace files carry their id under "id"; keep it so the memory row
+        # stays traceable to testing/<package>/findings/<id>.json.
+        if not payload.get("finding_id") and (finding.get("id") or finding.get("finding_id")):
+            payload["finding_id"] = finding.get("id") or finding.get("finding_id")
         return self.engine.after_finding(payload)
+
+    def import_findings(self, apply: bool = False) -> Dict[str, Any]:
+        """Reconcile `testing/<pkg>/findings/*.json` with the learning engine.
+
+        Dry-run by default: the result lists what would be recorded or updated.
+        `apply=True` (CLI `--apply`) persists the plan. Every finding is
+        re-evaluated through the Hard FP Gate first, so the stored state is the
+        recomputed state — a declared `REPORTABLE` that fails the gate is never
+        written as `REPORTABLE`.
+        """
+        findings_dir = os.path.join(self.workspace, "findings")
+        rows: List[Dict[str, Any]] = []
+        if not os.path.isdir(findings_dir):
+            return {
+                "workspace": self.workspace,
+                "target": self.target,
+                "dry_run": not apply,
+                "rows": [],
+                "counts": {},
+                "error": f"no findings directory: {findings_dir}",
+            }
+
+        for name in sorted(os.listdir(findings_dir)):
+            if not name.endswith(".json"):
+                continue
+            path = os.path.join(findings_dir, name)
+            row: Dict[str, Any] = {"file": f"findings/{name}"}
+            try:
+                with open(path, "r", encoding="utf-8-sig") as handle:
+                    finding = json.load(handle)
+            except (OSError, json.JSONDecodeError) as exc:
+                row.update({"action": "error", "detail": f"unreadable finding file: {exc}"})
+                rows.append(row)
+                continue
+
+            finding_id = finding.get("id") or finding.get("finding_id")
+            stem = os.path.splitext(name)[0]
+            if not finding_id and stem.startswith("FIND-"):
+                # Evidence files written before the id convention still carry
+                # their identity in the filename.
+                finding_id = stem
+            row.update(
+                {
+                    "finding_id": finding_id,
+                    "title": finding.get("title") or "",
+                    "declared_state": finding.get("state"),
+                }
+            )
+            if not finding_id:
+                row.update({"action": "error", "detail": "finding file has no id"})
+                rows.append(row)
+                continue
+
+            gate = self.evaluate_finding(finding)
+            row["gate_state"] = gate["final_state"]
+            row["reporting_gate_open"] = bool(gate["reporting_gate_open"])
+
+            if self.engine is None:
+                row.update({"action": "skipped", "detail": "learning engine unavailable"})
+                rows.append(row)
+                continue
+
+            stored_id = self.engine.resolve_finding_id(str(finding_id), self.target)
+            existing = self.engine.get_finding(stored_id) if stored_id else None
+            if existing is None:
+                row["action"] = "record"
+                row["detail"] = "absent from the learning engine"
+                if apply:
+                    payload = dict(finding)
+                    payload["id"] = finding_id  # filename-derived ids must survive
+                    row["persisted_id"] = self.persist_finding(payload, gate)
+                    row["action"] = "recorded"
+            else:
+                row["stored_id"] = stored_id
+                drift = (existing.get("state") != gate["final_state"]) or bool(
+                    existing.get("verified")
+                ) != bool(gate["reporting_gate_open"])
+                if not drift:
+                    row["action"] = "in-sync"
+                else:
+                    row["action"] = "update-state"
+                    row["detail"] = (
+                        f"{existing.get('state')} -> {gate['final_state']} "
+                        f"(verified {bool(existing.get('verified'))} -> "
+                        f"{bool(gate['reporting_gate_open'])})"
+                    )
+                    if apply:
+                        self.engine.set_finding_state(
+                            stored_id,
+                            gate["final_state"],
+                            verified=bool(gate["reporting_gate_open"]),
+                        )
+                        row["action"] = "updated"
+            rows.append(row)
+
+        counts: Dict[str, int] = {}
+        for row in rows:
+            key = str(row.get("action", ""))
+            counts[key] = counts.get(key, 0) + 1
+        return {
+            "workspace": self.workspace,
+            "target": self.target,
+            "session_id": self.session_id,
+            "dry_run": not apply,
+            "rows": rows,
+            "counts": counts,
+        }
 
     # ------------------------------------------------------------------ #
     # Ledger
@@ -363,6 +474,15 @@ def build_parser() -> argparse.ArgumentParser:
     transition.add_argument("--file", required=True)
     transition.add_argument("--to", required=True)
     transition.add_argument("--apply", action="store_true")
+
+    findings_sync = sub.add_parser(
+        "findings",
+        parents=[common],
+        help="Reconcile testing/<pkg>/findings/*.json with the learning engine (dry-run)",
+    )
+    findings_sync.add_argument(
+        "--apply", action="store_true", help="Persist the planned record/update actions"
+    )
 
     fp_db = sub.add_parser("fp-db", parents=[common], help="Inspect/extend the FP signature database")
     fp_sub = fp_db.add_subparsers(dest="fp_command")
@@ -654,6 +774,41 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 print(f"[+] State written to {args.file}")
         return 0 if result["allowed"] else 1
 
+    if command == "findings":
+        payload = orchestrator.import_findings(apply=bool(getattr(args, "apply", False)))
+        if args.json:
+            print(json.dumps(payload, indent=2))
+        else:
+            if payload.get("error"):
+                print(f"[-] {payload['error']}")
+            mode = "APPLY" if not payload.get("dry_run") else "DRY RUN"
+            print(
+                f"[*] Findings reconciliation ({mode}) — {payload['target']} @ {payload['workspace']}"
+            )
+            markers = {
+                "record": "would record",
+                "recorded": "recorded",
+                "update-state": "would update",
+                "updated": "updated",
+                "in-sync": "in-sync",
+                "skipped": "skipped",
+                "error": "ERROR",
+            }
+            for row in payload["rows"]:
+                label = str(row.get("finding_id") or row.get("file") or "?")
+                marker = markers.get(str(row.get("action")), str(row.get("action")))
+                detail = f" | {row['detail']}" if row.get("detail") else ""
+                print(f"    {label:<16} {marker}{detail}")
+            print(f"    counts: {payload.get('counts') or {}}")
+            pending = {"record", "update-state"}
+            if payload.get("dry_run") and any(
+                row.get("action") in pending for row in payload["rows"]
+            ):
+                print("[*] Dry run: re-run with --apply to persist")
+        if payload.get("error"):
+            return 1
+        return 1 if any(row.get("action") == "error" for row in payload["rows"]) else 0
+
     if command == "coverage":
         try:
             from scripts import compliance_matrix as coverage_mod
@@ -778,6 +933,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "registry": orchestrator.validate_registry(),
             "links": orchestrator.link_check(),
             "tools": preflight_mod.check_tools(),
+            "ios_tools": preflight_mod.check_ios_tools(),
         }
         if orchestrator.engine is not None:
             checks["learning_engine"] = orchestrator.engine.stats()
@@ -795,6 +951,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print(f"[*] Registry: {checks['registry']['status']} | Links: {checks['links']['status']}")
             for name, status in checks["tools"].items():
                 print(f"    - {name:<12}: {status}")
+            ios_missing = [
+                name for name, status in checks["ios_tools"].items() if status != "FOUND"
+            ]
+            print(
+                "[*] iOS tooling (optional): "
+                + ", ".join(f"{name}={status}" for name, status in checks["ios_tools"].items())
+            )
+            if ios_missing:
+                print(
+                    "    -> iOS scopes cannot be tested without them: "
+                    "record the gap, do not claim iOS coverage"
+                )
             if isinstance(checks["learning_engine"], dict) and "error" not in checks["learning_engine"]:
                 print(f"[*] Learning engine: {checks['learning_engine']}")
             for issue in checks["db_integrity"]:

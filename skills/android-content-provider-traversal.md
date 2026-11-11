@@ -1,3 +1,8 @@
+---
+name: Android Content Provider Traversal
+description: Use when testing exported content providers for path traversal, SQL injection, and permission bypass.
+---
+
 # Content provider path traversal & SQL injection (android-content-provider-traversal.md)
 **Standard:** OWASP MASVS-STORAGE / MASVS-PLATFORM
 **Audience:** Mobile penetration testers & android agents

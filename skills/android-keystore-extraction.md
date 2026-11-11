@@ -1,3 +1,8 @@
+---
+name: Android Keystore Extraction
+description: Use when auditing Android Keystore usage: key generation parameters, exportability, and extraction or misuse paths.
+---
+
 # Android Keystore key extraction & misuse (android-keystore-extraction.md)
 **Standard:** OWASP MASVS-CRYPTO
 **Audience:** Mobile penetration testers & android agents

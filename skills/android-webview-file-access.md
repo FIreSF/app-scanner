@@ -1,3 +1,8 @@
+---
+name: Android Webview File Access
+description: Use when testing Android WebView file access: setAllowFileAccess, universal access, file:// scheme abuse and local XSS.
+---
+
 # WebView file access & universal access (android-webview-file-access.md)
 **Standard:** OWASP MASVS-PLATFORM
 **Audience:** Mobile penetration testers & android agents

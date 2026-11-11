@@ -1,3 +1,8 @@
+---
+name: Master Bugbounty Rules
+description: Master rules of engagement for mobile bug-bounty and pentest runs: authorization, scope, evidence standards, and reporting.
+---
+
 # MASTER MOBILE BUG BOUNTY & PENETRATION TESTING RULES OF ENGAGEMENT
 **Document:** `skills/master-bugbounty-rules.md`  
 **Version:** 2.0.0 | **Standard:** OWASP MASVS v2.0 / MASTG / Bug Bounty Safe Harbor  

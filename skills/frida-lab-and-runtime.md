@@ -1,3 +1,8 @@
+---
+name: Frida Lab And Runtime
+description: Use when setting up the Frida lab or writing runtime instrumentation: spawn/attach, hooking, SSL-pinning and root-detection bypass.
+---
+
 # FRIDA LAB SETUP & RUNTIME BYPASS PLAYBOOK (skills/frida-lab-and-runtime.md)
 **Standard:** OWASP MASVS-RESILIENCE / MASVS-NETWORK | Android dynamic analysis
 **Audience:** frida-script-agent, dynamic-agent, root-device-agent, emulator-agent

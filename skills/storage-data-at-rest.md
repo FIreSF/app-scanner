@@ -1,3 +1,8 @@
+---
+name: Storage Data At Rest
+description: Use when auditing data at rest: SharedPreferences, internal and external storage, databases, backups, clipboard.
+---
+
 # STORAGE & DATA-AT-REST SECURITY AUDITING (skills/storage-data-at-rest.md)
 **Standard:** OWASP MASVS-STORAGE | Android Local Storage & iOS Data Protection  
 **Audience:** Senior Mobile Penetration Testers & Storage Analysis Agents  

@@ -1,3 +1,8 @@
+---
+name: Android Insecure Randomness
+description: Use when reviewing randomness: session tokens, IVs, nonces, and reset codes built on java.util.Random or SecureRandom misuse.
+---
+
 # Insecure randomness (tokens, IVs, nonces) (android-insecure-randomness.md)
 **Standard:** OWASP MASVS-CRYPTO
 **Audience:** Mobile penetration testers & android agents

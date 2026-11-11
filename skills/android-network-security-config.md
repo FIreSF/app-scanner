@@ -1,3 +1,8 @@
+---
+name: Android Network Security Config
+description: Use when reviewing the Android Network Security Config, cleartext traffic rules, and user-added certificate authorities.
+---
+
 # Android Network Security Config & cleartext (android-network-security-config.md)
 **Standard:** OWASP MASVS-NETWORK
 **Audience:** Mobile penetration testers & android agents

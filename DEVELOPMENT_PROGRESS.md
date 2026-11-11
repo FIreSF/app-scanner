@@ -1,7 +1,7 @@
 # DEVELOPMENT PROGRESS
 
 **Project:** Mobile-Pentesting Multi-Agent Framework (v1.2.0)
-**Window:** 2026-10-31
+**Window:** 2026-10-31 (second pass: 2026-11-11 — see §11)
 **Scope of this pass:** audit → P0/P1 remediation → test coverage → documentation
 **Status:** P0 + P1 + P2 complete; the P3 quality items were completed in the continuation pass (§10). Only the destructive demo-row cleanup and device-bound verification remain with the operator.
 
@@ -224,3 +224,64 @@ deliberately retained until the operator approves deletion.
 **Not changed:** no destructive database operation was executed; the legacy
 rows can be removed with `python -m learning_engine prune --orphans --demo --apply`
 after review.
+
+---
+
+## 11. Second pass — runtime wiring, intel, CI (2026-11-11)
+
+The first pass made the *runtime* trustworthy. This pass made the *framework* real: the roster
+became loadable agents, the intel agent got a data source, the memory stopped losing findings,
+and the documentation stopped claiming a host that no longer exists.
+
+### 11.1 What changed
+
+| Change | Module | Verification |
+|---|---|---|
+| Registry → loadable OpenCode agents (`.opencode/agents/*.md`) and project config (`.opencode/opencode.json`) | `scripts/sync_agent_runtime.py` (new) | `sync_agent_runtime.py --check`; runtime reports 24 agents (7 built-in + 17 project) |
+| Constitution encoded as permissions: `subagent: deny` for every sub-agent (AGENTS.md §2.6), roster allow-list + blanket deny for `orchestrator-agent` (AGENTS.md §1) | same | `tests/test_agent_runtime.py` (10 tests) |
+| All 29 skills given `name` + `description` frontmatter so the model can select them | `skills/*.md`, `.agents/skills/learning-engine-integration/SKILL.md` | `tests/test_agent_runtime.py`; skills visible in the runtime |
+| MCP stdio server for `mcp-bug-intel-agent` (NVD API 2.0, OSV, CISA KEV, offline FP-DB check via `scripts.findings.FalsePositiveDB`) | `scripts/mcp_intel_server.py` (new) | `--self-test` 10/10; 49 new tests; server connected, tools return live data |
+| `orchestrator_runner.py findings` — reconciles workspace findings with the learning engine (dry-run / `--apply`, gate-recomputed state only) | `scripts/orchestrator_runner.py` | `tests/test_findings_sync.py` (9 tests) |
+| `gate --persist` keeps the workspace finding id (was minting a random `FIND-<uuid>`) | `scripts/orchestrator_runner.py` | `test_persist_finding_keeps_the_workspace_finding_id` |
+| Per-target finding identity: `findings.finding_id` is a global primary key, but every engagement reuses `FIND-0001` — a colliding id is now stored as `<target>#<finding_id>` | `learning_engine/engine.py` (`resolve_finding_id`, `after_finding`, `get_finding(target_package=...)`) | `test_same_finding_id_in_two_targets_never_overwrites` |
+| `doctor` reports the optional Apple toolchain and instructs recording the gap | `scripts/runtime_preflight.py`, `scripts/orchestrator_runner.py` | `doctor` output; `ios_tools` in `--json` |
+| Opt-in device-bound test suite (adb device, frida, jadx/apktool/mitmdump, `node --check` on all Frida templates) | `tests/test_lab_integration.py` (new) | `MOBILE_AGENT_LAB=1 python -m unittest tests.test_lab_integration` → 5 OK |
+| CI: tests (×2, incl. `-W error::ResourceWarning`), `link-check`, `validate-registry`, skill `--validate`, writeup `--check`, agent-drift `--check`, `doctor` | `.github/workflows/ci.yml` (new) | mirrors the local verification table below |
+| Dependency-free project metadata | `pyproject.toml` (new) | `dependencies = []`; `lab` extras documented |
+| `runtime/opencode/ORCHESTRATION.md` rewritten — it mandated a `sessions_spawn context="isolated"` API that does not exist | `runtime/opencode/ORCHESTRATION.md` | §0 materialization/dispatch, §3 dispatch checklist |
+
+### 11.2 Verification snapshot (2026-11-11)
+
+Host: Linux WSL2, Python 3.14.7, OpenCode v2.2.7, device `127.0.0.1:21513` connected,
+frida 17.25.2.
+
+| Check | Command | Result |
+|---|---|---|
+| Tests | `python -m unittest discover -s tests -t .` | **234 OK** (5 skipped — the opt-in lab suite) |
+| Device-bound tests | `MOBILE_AGENT_LAB=1 python -m unittest tests.test_lab_integration` | **5 OK** |
+| Warnings | `python -W error::ResourceWarning -m unittest discover -s tests -t .` | OK |
+| Links | `python scripts/orchestrator_runner.py link-check` | **PASS — 94 references** |
+| Registry | `python scripts/orchestrator_runner.py validate-registry` | PASS |
+| Agent runtime | `python scripts/sync_agent_runtime.py --check` | in sync (18 managed files) |
+| Skills | `python scripts/skill_registry.py --validate` | 17/17 mapped |
+| Writeups | `python scripts/writeup_index.py --check` | up to date |
+| MCP server | `python scripts/mcp_intel_server.py --self-test` | PASS (10/10) |
+| Environment | `python scripts/orchestrator_runner.py doctor` | OK (all 7 Android-side tools FOUND; iOS tooling reported absent) |
+| Memory reconciliation | `orchestrator_runner.py findings --target <pkg>` (×4 workspaces) | 10 findings recorded and target-attributed; every re-check `in-sync` |
+
+### 11.3 Data decisions taken by the operator
+
+- **Import approved:** the 10 engagement findings were written into
+  `learning_engine/learning_memory.db` with their gate-recomputed states
+  (carteira `VALIDATED`, XP Clear `REPORTABLE`, XP Empresas `VALIDATED` +
+  `CONFIRMED`, Smartsheet 5 × `OBSERVATION` + 1 × `CONFIRMED`).
+- **Cleanup declined:** the legacy demo rows stay; `doctor --strict` still exits 1
+  and `prune --orphans --demo --apply` remains available.
+
+### 11.4 Environment correction
+
+The first pass recorded "on the current Linux host `jadx`, `sqlite3`, `mitmproxy`
+and `python` are found, while `adb`, `frida` and `apktool` are missing". That is
+no longer true: as of 2026-11-11 **all seven** checked tools are present, and a
+device is attached. The iOS toolchain (`otool`, `plutil`, `class-dump`,
+`codesign`, `idb`, `ios-deploy`) is absent and is now reported by `doctor`.

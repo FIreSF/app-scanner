@@ -1,0 +1,32 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Unit tests (hermetic — no device, no network)
+        run: python -m unittest discover -s tests -t .
+      - name: Unit tests without resource warnings
+        run: python -W error::ResourceWarning -m unittest discover -s tests -t .
+      - name: Canonical reference check
+        run: python scripts/orchestrator_runner.py link-check
+      - name: Registry structure check
+        run: python scripts/orchestrator_runner.py validate-registry
+      - name: Skill scenario mapping
+        run: python scripts/skill_registry.py --validate
+      - name: Writeup index freshness
+        run: python scripts/writeup_index.py --check
+      - name: OpenCode agent runtime in sync with the registry
+        run: python scripts/sync_agent_runtime.py --check
+      - name: Environment diagnostics
+        run: python scripts/orchestrator_runner.py doctor
+      # Device-bound checks (tests/test_lab_integration.py) are opt-in and
+      # never run here: MOBILE_AGENT_LAB is not set.

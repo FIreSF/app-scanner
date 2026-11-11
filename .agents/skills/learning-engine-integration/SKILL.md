@@ -1,3 +1,8 @@
+---
+name: Learning Engine Integration
+description: Use when persisting engagement results into the SQLite learning engine — sessions, findings, tested variants, triage feedback and lessons (orchestrator-only standard).
+---
+
 # SKILL — Learning Engine Integration (`.agents/skills/learning-engine-integration/SKILL.md`)
 
 **Owner:** `orchestrator-agent` (the only agent allowed to persist learning)

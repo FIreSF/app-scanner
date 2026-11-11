@@ -171,13 +171,22 @@ class LearningEngine:
         ).hexdigest()[:8]
 
         with self._connect() as connection:
+            # `finding_id` is the table's primary key, but ids such as
+            # FIND-0001 are reused by every engagement. Never overwrite another
+            # target's row: store the collision under `<target>#<finding_id>`.
+            stored_id = finding_id
+            existing = connection.execute(
+                "SELECT target_package FROM findings WHERE finding_id = ?", (finding_id,)
+            ).fetchone()
+            if existing is not None and (existing["target_package"] or "") != target_package:
+                stored_id = f"{target_package}#{finding_id}"
             connection.execute(
                 """INSERT OR REPLACE INTO findings
                    (finding_id, session_id, target_package, title, severity, state,
                     signature_hash, masvs_category, impact, poc_path, verified)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
-                    finding_id,
+                    stored_id,
                     session_id,
                     target_package,
                     title,
@@ -190,7 +199,7 @@ class LearningEngine:
                     verified,
                 ),
             )
-        return finding_id
+        return stored_id
 
     # ------------------------------------------------------------------ #
     # Hook 4: before_summary
@@ -333,12 +342,39 @@ class LearningEngine:
             rows = connection.execute(query, params).fetchall()
         return [dict(row) for row in rows]
 
-    def get_finding(self, finding_id: str) -> Optional[Dict[str, Any]]:
+    def get_finding(
+        self, finding_id: str, target_package: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Return one finding row, optionally scoped to a target package."""
+        query = "SELECT * FROM findings WHERE finding_id = ?"
+        params: List[Any] = [finding_id]
+        if target_package:
+            query += " AND target_package = ?"
+            params.append(target_package)
         with self._connect() as connection:
-            row = connection.execute(
-                "SELECT * FROM findings WHERE finding_id = ?", (finding_id,)
-            ).fetchone()
+            row = connection.execute(query, params).fetchone()
         return dict(row) if row else None
+
+    def resolve_finding_id(
+        self, finding_id: str, target_package: str
+    ) -> Optional[str]:
+        """Return the id this finding is stored under for `target_package`.
+
+        `findings.finding_id` is the primary key of the table, but every
+        engagement reuses ids such as `FIND-0001`. A finding therefore lives
+        either under its plain id (when that id belongs to this target) or
+        under the scoped form `<target>#<finding_id>` (when the plain id is
+        already taken by another target). Returns None when the target has no
+        such finding.
+        """
+        plain = self.get_finding(finding_id)
+        if plain is not None and (plain.get("target_package") or "") == target_package:
+            return finding_id
+        scoped_id = f"{target_package}#{finding_id}"
+        scoped = self.get_finding(scoped_id)
+        if scoped is not None and (scoped.get("target_package") or "") == target_package:
+            return scoped_id
+        return None
 
     def set_finding_state(self, finding_id: str, state: str, verified: Optional[bool] = None) -> bool:
         assignments = ["state = ?"]

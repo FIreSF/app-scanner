@@ -1,3 +1,8 @@
+---
+name: Flutter Android Security
+description: Use when testing Flutter or Dart Android apps: Dart route handling, initial-route injection, dart:io exposure, engine isolation.
+---
+
 # Flutter app security testing (flutter-android-security.md)
 **Standard:** OWASP MASVS-NETWORK / MASVS-CODE
 **Audience:** Mobile penetration testers & flutter agents

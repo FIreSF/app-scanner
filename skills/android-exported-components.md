@@ -1,3 +1,8 @@
+---
+name: Android Exported Components
+description: Use when auditing the manifest for exported activities, services, receivers, and their permission guards.
+---
+
 # Android exported components & manifest audit (android-exported-components.md)
 **Standard:** OWASP MASVS-PLATFORM
 **Audience:** Mobile penetration testers & android agents

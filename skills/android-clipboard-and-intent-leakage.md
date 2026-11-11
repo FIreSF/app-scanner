@@ -1,3 +1,8 @@
+---
+name: Android Clipboard And Intent Leakage
+description: Use when hunting clipboard and intent-extra leakage of tokens, secrets, or PII in an Android app.
+---
+
 # Clipboard & intent-extra data leakage (android-clipboard-and-intent-leakage.md)
 **Standard:** OWASP MASVS-STORAGE / MASVS-PLATFORM
 **Audience:** Mobile penetration testers & android agents

@@ -1,3 +1,8 @@
+---
+name: IOS Jailbreak And Debug
+description: Use when testing iOS jailbreak detection, anti-debug, and instrumentation defences.
+---
+
 # iOS jailbreak & anti-debug checks (ios-jailbreak-and-debug.md)
 **Standard:** OWASP MASVS-RESILIENCE
 **Audience:** Mobile penetration testers & ios agents

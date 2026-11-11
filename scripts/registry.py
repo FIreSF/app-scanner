@@ -94,6 +94,7 @@ CORE_REQUIRED_FILES: Tuple[str, ...] = (
     "scripts/writeup_index.py",
     "scripts/mindmap.py",
     "scripts/report_builder.py",
+    "scripts/mcp_intel_server.py",
     "writeups/README.md",
     "writeups/index.md",
 )

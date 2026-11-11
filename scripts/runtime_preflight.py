@@ -65,6 +65,10 @@ TOOLS_TO_CHECK = [
 DEVICE_TOOLS = ["adb", "frida"]
 # Tools that are mandatory before any static work can start.
 STATIC_TOOLS = ["python"]
+# Optional Apple-platform tooling. Absence never degrades the workspace status:
+# an iOS scope without these tools must be recorded as a gap, not claimed as
+# tested (README section 4, AGENTS.md section 4).
+IOS_TOOLS = ["otool", "plutil", "class-dump", "codesign", "idb", "ios-deploy"]
 
 ANDROID_PACKAGE_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$")
 IOS_BUNDLE_RE = re.compile(r"^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$")
@@ -116,6 +120,11 @@ def check_tools(tools: Optional[Sequence[str]] = None) -> Dict[str, str]:
     for tool in tools or TOOLS_TO_CHECK:
         result[tool] = "FOUND" if shutil.which(tool) is not None else "NOT_FOUND"
     return result
+
+
+def check_ios_tools() -> Dict[str, str]:
+    """Optional Apple-platform tooling. Informational only, never a status gate."""
+    return check_tools(IOS_TOOLS)
 
 
 def _resolve_workspace(workspace_path: Optional[str], target: str) -> str:

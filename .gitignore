@@ -4,3 +4,15 @@ __pycache__/
 .venv/
 *.db
 .env
+
+# Third-party application binaries: re-obtained per engagement, not ours to
+# redistribute, and the largest ones exceed GitHub's 100 MB push limit.
+*.apk
+*.xapk
+
+# Re-downloadable frida-server builds (one exceeds the 100 MB push limit).
+frida-server-*
+
+# Decompiled third-party output (jadx / apktool trees): regenerable from the
+# artifact, embeds the vendor's code and keys, and would swamp the repository.
+testing/*/static/

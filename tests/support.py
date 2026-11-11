@@ -117,6 +117,12 @@ def load_report_module():
     return report_builder
 
 
+def load_mcp_intel_module():
+    from scripts import mcp_intel_server
+
+    return mcp_intel_server
+
+
 def load_runner_module():
     from scripts import orchestrator_runner
 

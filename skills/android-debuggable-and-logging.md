@@ -1,3 +1,8 @@
+---
+name: Android Debuggable And Logging
+description: Use when checking debuggable builds, verbose or sensitive logging, and logcat exposure of secrets.
+---
+
 # Debuggable apps & sensitive logging (android-debuggable-and-logging.md)
 **Standard:** OWASP MASVS-RESILIENCE / MASVS-CODE
 **Audience:** Mobile penetration testers & android agents

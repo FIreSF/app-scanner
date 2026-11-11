@@ -1,3 +1,8 @@
+---
+name: Crypto Keymanagement Audit
+description: Use when auditing cryptographic implementations and key management: algorithms, modes, IVs, hardcoded and derived keys.
+---
+
 # CRYPTOGRAPHIC IMPLEMENTATION & KEY MANAGEMENT AUDITING (skills/crypto-keymanagement-audit.md)
 **Standard:** OWASP MASVS-CRYPTO | Android Keystore & iOS KeyChain / Secure Enclave  
 **Audience:** Senior Mobile Penetration Testers & Cryptography Analysis Agents  

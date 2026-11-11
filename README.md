@@ -62,6 +62,20 @@ authorized target app, it can:
 Max 3 sub-agents run at the same time. Sub-agents never make final risk decisions — only the
 orchestrator can promote a finding to REPORTABLE.
 
+### How the roster is loaded and dispatched
+
+`runtime/registry.json` is the single source of truth. `python scripts/sync_agent_runtime.py`
+turns it into the files an agent runtime actually loads (`.opencode/agents/*.md` and
+`.opencode/opencode.json`), and `--check` fails when they drift — CI runs it. The
+constitution is enforced as permissions rather than prose: every sub-agent carries
+`subagent: deny` (AGENTS.md §2.6) and only `orchestrator-agent` may launch the 16
+registered ids.
+
+The CVE / bug-intel agent reads its data from the `bug-intel` MCP server
+(`scripts/mcp_intel_server.py`): NVD keyword search, OSV package advisories, the CISA KEV
+catalog, and an offline check against the false-positive signature database. It never
+touches the device or the target network.
+
 ### How to use it (end-to-end)
 
 **Requirements:** Python 3.9+, plus the mobile tools you need for your scope:
@@ -203,6 +217,8 @@ python scripts/orchestrator_runner.py ledger --target "com.example.targetapp" \
 python scripts/orchestrator_runner.py summary  --target "com.example.targetapp"
 python scripts/orchestrator_runner.py fp-db list --json
 python scripts/orchestrator_runner.py fp-db check --hash "<sha256 signature>"
+python scripts/orchestrator_runner.py findings --target "com.example.targetapp"   # dry run
+python scripts/orchestrator_runner.py findings --target "com.example.targetapp" --apply
 python -m learning_engine --help
 python scripts/writeup_index.py            # rebuild writeups/index.md
 python scripts/writeup_index.py --check    # fail if the index is stale
@@ -211,6 +227,14 @@ python scripts/writeup_index.py --check    # fail if the index is stale
 `ledger --record` appends the measured variant to both the SQLite memory and
 `notes/tested-variants.md`. Every command that emits structured data accepts
 `--json`, including `fp-db`, `mindmap` and `report`.
+
+`findings` reconciles `testing/<package>/findings/*.json` with the learning
+engine: dry-run by default, `--apply` persists. It stores the **recomputed**
+Hard-FP-Gate state, never a declared one — a finding that claims `REPORTABLE`
+but fails the gate is recorded at the state the gate allows. Finding ids are
+unique per target (`FIND-0001` exists in every engagement), so the engine
+stores a colliding id as `<target>#<finding_id>` instead of overwriting
+another target's row.
 
 ### 9. Refresh the attack-surface mindmap
 
@@ -304,6 +328,8 @@ The roster itself lives in `runtime/registry.json` and is validated by
   - `writeup_index.py`: Writeup index builder (`writeups/raw` → `writeups/processed` → `writeups/index.md`).
   - `mindmap.py`: Attack-surface mindmap builder (`notes/MINDMAP.md`) from real evidence.
   - `report_builder.py`: Gated final report assembly (`reports/final-report.md`).
+  - `mcp_intel_server.py`: MCP stdio server backing `mcp-bug-intel-agent` (NVD / OSV / CISA KEV lookups + offline FP-DB check).
+  - `sync_agent_runtime.py`: Generates the loadable OpenCode agents (`.opencode/agents/*.md`) and project config (`.opencode/opencode.json`) from the registry; `--check` fails on drift.
 - `learning_engine/`:
   - `engine.py`: SQLite-backed engine implementing the 5 lifecycle memory hooks.
   - `schema.sql`: Database schema for sessions, variants, findings, and triage feedback.
@@ -341,14 +367,29 @@ The roster itself lives in `runtime/registry.json` and is validated by
 
 ## 4. Status & Limitations
 
-- The Python runtime is covered by an automated test suite; run it before and
-  after any change.
-- Device-bound work (Frida hook execution, APK static/dynamic analysis, traffic
-  interception) is **not** exercised by the test suite: it requires an
-  authorized device/emulator and a target artifact. The framework's job is to
-  gate and record that work, not to fabricate it.
-- `apktool`, `jadx` and `mitmproxy` are optional; when missing, `bootstrap`
-  reports `DEGRADED` (exit 2) and the corresponding agents must record the gap
-  rather than claim results.
+- The Python runtime is covered by an automated test suite (234 tests, hermetic —
+  no device, no network); run it before and after any change:
+  `python -m unittest discover -s tests -t .`.
+- **Device-bound checks are opt-in.** `tests/test_lab_integration.py` only runs
+  with `MOBILE_AGENT_LAB=1` and then exercises the real toolchain (adb device,
+  frida, jadx/apktool/mitmdump, `node --check` on every Frida template). CI
+  never sets it.
+- The Android toolchain (`adb`, `frida`, `apktool`, `jadx`, `mitmproxy`) is
+  present on the current host; `apktool`/`jadx`/`mitmproxy` stay optional in
+  code — when missing, `bootstrap` reports `DEGRADED` (exit 2) and the
+  corresponding agents must record the gap rather than claim results.
+- **iOS is diagnosed, not covered.** `doctor` now also reports the optional
+  Apple toolchain (`otool`, `plutil`, `class-dump`, `codesign`, `idb`,
+  `ios-deploy`); when it is absent an iOS scope must be recorded as a gap.
+  Its absence never changes the `READY`/`DEGRADED`/`BLOCKED` status.
+- The roster is executable, not just documented: `scripts/sync_agent_runtime.py`
+  materializes the 17 agents and the project config that an OpenCode runtime
+  loads, and `mcp-bug-intel-agent` is backed by a real MCP server
+  (`scripts/mcp_intel_server.py`: NVD, OSV, CISA KEV, offline FP-DB).
+- Real engagement work is still partial: four engagements exist under
+  `testing/`, but live instrumentation (`frida/`), traffic interception
+  (`traffic/`) and the resilience controls (`MASVS-RESILIENCE-*`, 0 tested on
+  every target) remain largely unexecuted — the framework gates and records
+  that work rather than fabricating it.
 - See `PROJECT_AUDIT.md`, `DEVELOPMENT_PROGRESS.md` and
   `FINAL_PROJECT_REPORT.md` for the audit trail and the exact verified state.

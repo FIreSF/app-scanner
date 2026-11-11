@@ -1,3 +1,8 @@
+---
+name: Android Obfuscation And Packing
+description: Use when facing obfuscated or packed APKs: unpacking, deobfuscation, string decryption, and symbol recovery.
+---
+
 # Obfuscation, packing & string encryption (android-obfuscation-and-packing.md)
 **Standard:** OWASP MASVS-RESILIENCE / MASVS-CODE
 **Audience:** Mobile penetration testers & android agents

@@ -1,9 +1,9 @@
 # PROJECT AUDIT — Mobile-Pentesting Multi-Agent Framework (v1.2.0)
 
-**Audit date:** 2026-10-31
+**Audit date:** 2026-10-31 (second remediation pass: 2026-11-11 — see §9)
 **Auditor role:** Senior engineer / architect / QA
-**Repository root:** `Mobile-Agent/` (git repo root: `E:\Depi-project`, single commit `ae29dd5`, working tree untracked)
-**Remediation status:** P0 and P1 complete, P2 complete except the destructive DB cleanup (deferred to the operator). See §8.
+**Repository root:** `Mobile-Agent/` (git repo root: `E:\Depi-project` on Windows, `Depi-project/` on the Linux checkout; the repository has moved past the original single commit `ae29dd5` — the 2026-11-11 pass is committed separately)
+**Remediation status:** P0 and P1 complete, P2 complete except the destructive DB cleanup (deferred to the operator). See §8. Second pass: §9.
 
 ---
 
@@ -180,3 +180,56 @@ mutate state, and remaining device-dependent work documented as a limitation.
 running app, real APK decompilation/inventory, traffic interception with mitmproxy, and any
 end-to-end exploitation chain. These are recorded as limitations in
 `FINAL_PROJECT_REPORT.md` rather than claimed as working.
+
+---
+
+## 9. Second remediation pass (2026-11-11)
+
+The 2026-10-31 pass made the *runtime* correct. It left three things untrue: the roster was
+still documentation only (nothing could dispatch it), `mcp-bug-intel-agent` still had no data
+source, and the documents still described a host without `adb`/`frida`/`apktool`.
+
+### 9.1 Gap analysis found in the deployed state
+
+| # | Gap | Evidence | Fix |
+|---|---|---|---|
+| 1 | Agent briefings were inert markdown — no agent runtime could load them | `runtime/opencode/agents/*.md` referenced a `sessions_spawn` API that does not exist | `scripts/sync_agent_runtime.py` → `.opencode/agents/*.md` + `.opencode/opencode.json`; verified live (24 agents in the runtime, 17 of them project agents) |
+| 2 | Constitution rules were prose, not enforcement | nothing stopped a sub-agent from spawning one | generated permissions: `subagent: deny` on every sub-agent, roster allow-list + blanket deny on `orchestrator-agent` |
+| 3 | Skills were never advertised | the 29 `skills/*.md` had no `description` frontmatter | frontmatter added to all 29 + the learning-engine skill; directory registered in `opencode.json` |
+| 4 | `mcp-bug-intel-agent` had no intel source | no MCP server configured | `scripts/mcp_intel_server.py` (NVD / OSV / CISA KEV / offline FP-DB), connected and returning live data |
+| 5 | iOS was invisible to diagnostics | `doctor` checked 7 Android-side tools only | `doctor` now reports optional iOS tooling and says "record the gap, do not claim iOS coverage" |
+| 6 | `gate --persist` lost the finding id | a random `FIND-<uuid>` was minted instead of `FIND-0006` | `persist_finding` keeps the workspace id |
+| 7 | Workspace findings never reached the learning engine | 10 findings on disk, 3 rows in the DB | new `findings` reconciliation command (dry-run, `--apply`, gate-recomputed state only) |
+| 8 | `findings.finding_id` is a global primary key but every engagement reuses `FIND-0001` | the first import of 4 targets clobbered rows across targets | engine stores a colliding id as `<target>#<finding_id>`; `resolve_finding_id()` looks up per target; regression test added |
+| 9 | No CI, no project metadata | — | `.github/workflows/ci.yml` + dependency-free `pyproject.toml` |
+| 10 | No device-bound tests at all | 161 hermetic tests only | opt-in `tests/test_lab_integration.py` (`MOBILE_AGENT_LAB=1`) — now passing against the connected device |
+| 11 | `compliance/` missing for 3 of 5 workspaces; `mindmap --check` stale for 3 | — | regenerated for all workspaces; every `mindmap --check` green |
+| 12 | Documentation claimed missing tools / single commit / untracked tree | — | corrected in this file, `DEVELOPMENT_PROGRESS.md`, `FINAL_PROJECT_REPORT.md` and `README.md` |
+
+### 9.2 Verification snapshot (2026-11-11)
+
+| Check | Command | Result |
+|---|---|---|
+| Full suite | `python -m unittest discover -s tests -t .` | **234 tests OK** (5 skipped: opt-in lab tests) |
+| Device-bound suite | `MOBILE_AGENT_LAB=1 python -m unittest tests.test_lab_integration` | **5 tests OK** against the connected device |
+| Canonical references | `python scripts/orchestrator_runner.py link-check` | **PASS — 94 references** (93 → 94: the MCP server is now a required file) |
+| Registry | `python scripts/orchestrator_runner.py validate-registry` | PASS |
+| Agent runtime drift | `python scripts/sync_agent_runtime.py --check` | in sync (18 managed files) |
+| Skill mapping | `python scripts/skill_registry.py --validate` | 17/17 scenarios mapped |
+| Writeup index | `python scripts/writeup_index.py --check` | up to date |
+| MCP server | `python scripts/mcp_intel_server.py --self-test` | SELF-TEST PASS (10/10); server connected in the runtime, 4 tools returning live NVD/OSV/KEV data |
+| Environment | `python scripts/orchestrator_runner.py doctor` | OK — all 7 Android-side tools FOUND; iOS tooling reported as absent (gap, not a status change) |
+| Memory reconciliation | `orchestrator_runner.py findings --target <pkg>` (×4) | all 10 engagement findings recorded, target-attributed, gate-state consistent; every re-check `in-sync` |
+
+### 9.3 Still open (deliberately not "fixed")
+
+- The destructive demo-row cleanup remains a dry run
+  (`python -m learning_engine prune --orphans --demo` → 2 orphan findings
+  `FIND-37243040` / `FIND-DEDBCC04` + 1 orphan `triage_feedback`); the operator
+  chose to keep them, so `doctor --strict` still exits 1.
+- Live engagement work: `frida/`, `traffic/`, `crypto/`, `webview/` are empty for
+  3–4 targets and `MASVS-RESILIENCE-*` is 0 tested on every target.
+- iOS: no target, no host toolchain, no coverage.
+- No linter or type-checker is installed on the host, so none is configured or
+  run in CI — CI runs the test suite, `link-check`, registry/skill/writeup
+  validation and the agent-drift check instead.

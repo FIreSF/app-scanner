@@ -1,0 +1,14 @@
+[project]
+name = "depi-mobile-agent"
+version = "1.2.0"
+description = "DEPI multi-agent Android/iOS mobile application penetration-testing framework (orchestrator CLI, registry, false-positive gate, MASVS coverage, learning engine)"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.optional-dependencies]
+# Host toolchain for real engagements. Not needed by the runtime or the test
+# suite; `python scripts/orchestrator_runner.py doctor` reports availability.
+lab = [
+    "frida-tools",
+    "mitmproxy",
+]

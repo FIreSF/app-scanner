@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "skills": [
+    "./skills"
+  ],
+  "mcp": {
+    "servers": {
+      "bug-intel": {
+        "type": "local",
+        "command": [
+          "python3",
+          "scripts/mcp_intel_server.py"
+        ]
+      }
+    }
+  }
+}
